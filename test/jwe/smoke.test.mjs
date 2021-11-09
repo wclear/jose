@@ -27,6 +27,9 @@ function pubjwk(jwk) {
 
 const randomEnc = () => {
   const encs = ['A128GCM', 'A192GCM', 'A256GCM', 'A128CBC-HS256', 'A192CBC-HS384', 'A256CBC-HS512']
+  if (!('electron' in process.versions) && !keyRoot.includes('webcrypto')) {
+    encs.push('C20P')
+  }
   return encs[Math.floor(Math.random() * encs.length)]
 }
 
@@ -122,6 +125,36 @@ test.before(async (t) => {
       algs: ['ECDH-ES+A128KW', 'ECDH-ES+A192KW', 'ECDH-ES+A256KW'],
       generate: { crv: 'P-521' },
     },
+    x25519cha: {
+      public: pubjwk(x25519),
+      private: x25519,
+      algs: ['ECDH-ES+C20PKW'],
+      generate: { crv: 'X25519' },
+    },
+    x448cha: {
+      public: pubjwk(x448),
+      private: x448,
+      algs: ['ECDH-ES+C20PKW'],
+      generate: { crv: 'X448' },
+    },
+    p256cha: {
+      public: pubjwk(p256),
+      private: p256,
+      algs: ['ECDH-ES+C20PKW'],
+      generate: { crv: 'P-256' },
+    },
+    p384cha: {
+      public: pubjwk(p384),
+      private: p384,
+      algs: ['ECDH-ES+C20PKW'],
+      generate: { crv: 'P-384' },
+    },
+    p521cha: {
+      public: pubjwk(p521),
+      private: p521,
+      algs: ['ECDH-ES+C20PKW'],
+      generate: { crv: 'P-521' },
+    },
     x25519dir: {
       public: pubjwk(x25519),
       private: x25519,
@@ -209,6 +242,14 @@ test.before(async (t) => {
       },
       algs: ['A256GCM', 'A256GCMKW'],
     },
+    oct256cha: {
+      secret: {
+        ext: false,
+        kty: 'oct',
+        k: base64url(crypto.randomFillSync(new Uint8Array(256 >> 3))),
+      },
+      algs: ['C20P', 'C20PKW'],
+    },
     oct256c: {
       secret: { kty: 'oct', k: base64url(crypto.randomFillSync(new Uint8Array(256 >> 3))) },
       algs: ['A128CBC-HS256'],
@@ -225,7 +266,7 @@ test.before(async (t) => {
 })
 
 function dir(alg) {
-  return alg.startsWith('A') && !alg.endsWith('KW')
+  return (alg.startsWith('A') && !alg.endsWith('KW')) || /^X?C20P$/.test(alg)
 }
 
 async function smoke(t, ref, publicKeyUsages, privateKeyUsage, octAsKeyObject = false) {
@@ -324,6 +365,15 @@ function conditional({ webcrypto = 1, electron = 1 } = {}) {
 }
 
 conditional({ webcrypto: 0 })(smoke, 'rsa1_5')
+conditional({ webcrypto: 0, electron: 0 })(smoke, 'oct256cha')
+conditional({ webcrypto: 0, electron: 0 })(
+  'as keyobject',
+  smoke,
+  'oct256cha',
+  undefined,
+  undefined,
+  true,
+)
 conditional({ webcrypto: 0, electron: 0 })(smoke, 'x25519kw')
 conditional({ webcrypto: 0 })(smoke, 'x25519dir')
 conditional({ webcrypto: 0, electron: 0 })(smoke, 'x448kw')
@@ -357,3 +407,8 @@ conditional({ electron: 0 })('as keyobject', smoke, 'oct256', ['wrapKey'], ['unw
 conditional({ electron: 0 })(smoke, 'p256kw')
 conditional({ electron: 0 })(smoke, 'p384kw')
 conditional({ electron: 0 })(smoke, 'p521kw')
+conditional({ electron: 0, webcrypto: 0 })(smoke, 'p256cha')
+conditional({ electron: 0, webcrypto: 0 })(smoke, 'p384cha')
+conditional({ electron: 0, webcrypto: 0 })(smoke, 'p521cha')
+conditional({ electron: 0, webcrypto: 0 })(smoke, 'x25519cha')
+conditional({ electron: 0, webcrypto: 0 })(smoke, 'x448cha')
