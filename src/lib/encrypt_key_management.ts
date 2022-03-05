@@ -1,5 +1,5 @@
 import { wrap as aesKw } from '../runtime/aeskw.js'
-import * as ECDH from '../runtime/ecdhes.js'
+import * as ECDH from '../runtime/ecdh.js'
 import { encrypt as pbes2Kw } from '../runtime/pbes2kw.js'
 import { encrypt as rsaEs } from '../runtime/rsaes.js'
 import { encode as base64url } from '../runtime/base64url.js'
@@ -22,6 +22,7 @@ async function encryptKeyManagement(
   key: KeyLike | Uint8Array,
   providedCek?: Uint8Array,
   providedParameters: JWEKeyManagementHeaderParameters = {},
+  opuPrivateKey?: KeyLike,
 ): Promise<{
   cek: KeyLike | Uint8Array
   encryptedKey?: Uint8Array
@@ -39,34 +40,47 @@ async function encryptKeyManagement(
       cek = key
       break
     }
+    case 'ECDH-1PU':
     case 'ECDH-ES':
     case 'ECDH-ES+A128KW':
     case 'ECDH-ES+A192KW':
     case 'ECDH-ES+A256KW': {
+      if (
+        (alg.startsWith('ECDH-1PU') && !opuPrivateKey) ||
+        (alg.startsWith('ECDH-ES') && opuPrivateKey)
+      ) {
+        throw new Error()
+      }
+
       // Direct Key Agreement
       if (!ECDH.ecdhAllowed(key)) {
         throw new JOSENotSupported(
           'ECDH with the provided key is not allowed or not supported by your javascript runtime',
         )
       }
-      const { apu, apv } = providedParameters
       let { epk: ephemeralKey } = providedParameters
       ephemeralKey ||= (await ECDH.generateEpk(key)).privateKey
+      let { apu, apv } = providedParameters
+      apu ||= opuPrivateKey
+        ? await ECDH.default1PUApu(opuPrivateKey, ephemeralKey)
+        : new Uint8Array(0)
+      apv ||= opuPrivateKey ? await ECDH.default1PUApv(key) : new Uint8Array(0)
       const { x, y, crv, kty } = await exportJWK(ephemeralKey!)
       const sharedSecret = await ECDH.deriveKey(
         key,
         ephemeralKey,
-        alg === 'ECDH-ES' ? enc : alg,
-        alg === 'ECDH-ES' ? cekLength(enc) : parseInt(alg.slice(-5, -2), 10),
+        alg === 'ECDH-ES' || alg === 'ECDH-1PU' ? enc : alg,
+        alg === 'ECDH-ES' || alg === 'ECDH-1PU' ? cekLength(enc) : parseInt(alg.slice(-5, -2), 10),
         apu,
         apv,
+        opuPrivateKey,
       )
       parameters = { epk: { x, crv, kty } }
       if (kty === 'EC') parameters.epk!.y = y
       if (apu) parameters.apu = base64url(apu)
       if (apv) parameters.apv = base64url(apv)
 
-      if (alg === 'ECDH-ES') {
+      if (alg === 'ECDH-ES' || alg === 'ECDH-1PU') {
         cek = sharedSecret
         break
       }

@@ -659,6 +659,11 @@ export interface FlattenedDecryptResult {
    * JWE Per-Recipient Unprotected Header.
    */
   unprotectedHeader?: JWEHeaderParameters
+
+  /**
+   * Content Encryption Key used to decrypt the ciphertext. Only returned for ECDH-1PU.
+   */
+  contentEncryptionKey?: Uint8Array
 }
 
 export interface GeneralDecryptResult extends FlattenedDecryptResult {}
@@ -673,6 +678,11 @@ export interface CompactDecryptResult {
    * JWE Protected Header.
    */
   protectedHeader: CompactJWEHeaderParameters
+
+  /**
+   * Content Encryption Key used to decrypt the ciphertext. Only returned for ECDH-1PU.
+   */
+  contentEncryptionKey?: Uint8Array
 }
 
 export interface FlattenedVerifyResult {
@@ -728,6 +738,11 @@ export interface JWTDecryptResult {
    * JWE Protected Header.
    */
   protectedHeader: CompactJWEHeaderParameters
+
+  /**
+   * Content Encryption Key used to decrypt the ciphertext. Only returned for ECDH-1PU.
+   */
+  contentEncryptionKey?: Uint8Array
 }
 
 export interface ResolvedKey {

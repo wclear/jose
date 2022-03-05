@@ -1,5 +1,5 @@
 import { unwrap as aesKw } from '../runtime/aeskw.js'
-import * as ECDH from '../runtime/ecdhes.js'
+import * as ECDH from '../runtime/ecdh.js'
 import { decrypt as pbes2Kw } from '../runtime/pbes2kw.js'
 import { decrypt as rsaEs } from '../runtime/rsaes.js'
 import { decode as base64url } from '../runtime/base64url.js'
@@ -17,6 +17,7 @@ async function decryptKeyManagement(
   key: KeyLike | Uint8Array,
   encryptedKey: Uint8Array | undefined,
   joseHeader: JWEHeaderParameters,
+  opuPublicKey?: KeyLike,
 ): Promise<KeyLike | Uint8Array> {
   checkKeyType(alg, key, 'decrypt')
 
@@ -28,14 +29,23 @@ async function decryptKeyManagement(
 
       return key
     }
-    case 'ECDH-ES':
-      // Direct Key Agreement
-      if (encryptedKey !== undefined)
-        throw new JWEInvalid('Encountered unexpected JWE Encrypted Key')
 
+    case 'ECDH-1PU':
+    case 'ECDH-ES':
     case 'ECDH-ES+A128KW':
     case 'ECDH-ES+A192KW':
     case 'ECDH-ES+A256KW': {
+      if ((alg === 'ECDH-ES' || alg === 'ECDH-1PU') && encryptedKey !== undefined) {
+        throw new JWEInvalid('Encountered unexpected JWE Encrypted Key')
+      }
+
+      if (
+        (alg.startsWith('ECDH-1PU') && !opuPublicKey) ||
+        (alg.startsWith('ECDH-ES') && opuPublicKey)
+      ) {
+        throw new Error()
+      }
+
       // Direct Key Agreement
       if (!isObject<JWK>(joseHeader.epk))
         throw new JWEInvalid(`JOSE Header "epk" (Ephemeral Public Key) missing or invalid`)
@@ -64,13 +74,16 @@ async function decryptKeyManagement(
       const sharedSecret = await ECDH.deriveKey(
         epk,
         key,
-        alg === 'ECDH-ES' ? joseHeader.enc! : alg,
-        alg === 'ECDH-ES' ? cekLength(joseHeader.enc!) : parseInt(alg.slice(-5, -2), 10),
+        alg === 'ECDH-ES' || alg === 'ECDH-1PU' ? joseHeader.enc! : alg,
+        alg === 'ECDH-ES' || alg === 'ECDH-1PU'
+          ? cekLength(joseHeader.enc!)
+          : parseInt(alg.slice(-5, -2), 10),
         partyUInfo,
         partyVInfo,
+        opuPublicKey,
       )
 
-      if (alg === 'ECDH-ES') return sharedSecret
+      if (alg === 'ECDH-ES' || alg === 'ECDH-1PU') return sharedSecret
 
       // Key Agreement with Key Wrapping
       if (encryptedKey === undefined) throw new JWEInvalid('JWE Encrypted Key missing')

@@ -47,7 +47,7 @@ export interface JWTDecryptGetKey
 export async function jwtDecrypt(
   jwt: string | Uint8Array,
   key: KeyLike | Uint8Array,
-  options?: JWTDecryptOptions,
+  options?: JWTDecryptOptions & { publicKey?: KeyLike },
 ): Promise<JWTDecryptResult>
 /**
  * @param jwt JSON Web Token value (encoded as JWE).
@@ -57,17 +57,17 @@ export async function jwtDecrypt(
 export async function jwtDecrypt(
   jwt: string | Uint8Array,
   getKey: JWTDecryptGetKey,
-  options?: JWTDecryptOptions,
+  options?: JWTDecryptOptions & { publicKey?: KeyLike },
 ): Promise<JWTDecryptResult & ResolvedKey>
 export async function jwtDecrypt(
   jwt: string | Uint8Array,
   key: KeyLike | Uint8Array | JWTDecryptGetKey,
-  options?: JWTDecryptOptions,
+  options?: JWTDecryptOptions & { publicKey?: KeyLike },
 ) {
   const decrypted = await compactDecrypt(jwt, <Parameters<typeof compactDecrypt>[1]>key, options)
   const payload = jwtPayload(decrypted.protectedHeader, decrypted.plaintext, options)
 
-  const { protectedHeader } = decrypted
+  const { protectedHeader, contentEncryptionKey } = decrypted
 
   if (protectedHeader.iss !== undefined && protectedHeader.iss !== payload.iss) {
     throw new JWTClaimValidationFailed(
@@ -97,6 +97,10 @@ export async function jwtDecrypt(
   }
 
   const result = { payload, protectedHeader }
+
+  if (contentEncryptionKey) {
+    ;(<JWTDecryptResult>result).contentEncryptionKey = contentEncryptionKey
+  }
 
   if (typeof key === 'function') {
     return { ...result, key: decrypted.key }

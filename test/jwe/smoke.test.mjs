@@ -14,7 +14,7 @@ function pubjwk(jwk) {
   return publicJwk
 }
 
-const randomEnc = () => {
+const randomEnc = (forAlg) => {
   const encs = ['A128GCM', 'A192GCM', 'A256GCM', 'A128CBC-HS256', 'A192CBC-HS384', 'A256CBC-HS512']
   return encs[Math.floor(Math.random() * encs.length)]
 }
@@ -114,31 +114,31 @@ test.before(async (t) => {
     x25519dir: {
       public: pubjwk(x25519),
       private: x25519,
-      algs: ['ECDH-ES'],
+      algs: ['ECDH-ES', 'ECDH-1PU'],
       generate: { crv: 'X25519' },
     },
     x448dir: {
       public: pubjwk(x448),
       private: x448,
-      algs: ['ECDH-ES'],
+      algs: ['ECDH-ES', 'ECDH-1PU'],
       generate: { crv: 'X448' },
     },
     p256dir: {
       public: pubjwk(p256),
       private: p256,
-      algs: ['ECDH-ES'],
+      algs: ['ECDH-ES', 'ECDH-1PU'],
       generate: { crv: 'P-256' },
     },
     p384dir: {
       public: pubjwk(p384),
       private: p384,
-      algs: ['ECDH-ES'],
+      algs: ['ECDH-ES', 'ECDH-1PU'],
       generate: { crv: 'P-384' },
     },
     p521dir: {
       public: pubjwk(p521),
       private: p521,
-      algs: ['ECDH-ES'],
+      algs: ['ECDH-ES', 'ECDH-1PU'],
       generate: { crv: 'P-521' },
     },
     octAny: {
@@ -243,17 +243,22 @@ async function smoke(t, ref, publicKeyUsages, privateKeyUsage, octAsKeyObject = 
         ])
       }
 
+      let statik = {}
+      if (alg.startsWith('ECDH-1PU')) {
+        statik = await generateKeyPair(alg, fixtures.generate)
+      }
+
       const jwe = await new FlattenedEncrypt(crypto.randomFillSync(new Uint8Array(256 >> 3)))
         .setProtectedHeader({ 'urn:example:protected': true })
         .setUnprotectedHeader(
-          dir(alg) ? { enc: alg } : { enc: randomEnc(), 'urn:example:header': true },
+          dir(alg) ? { enc: alg } : { enc: randomEnc(alg), 'urn:example:header': true },
         )
         .setSharedUnprotectedHeader(
           dir(alg) ? { alg: 'dir' } : { alg, 'urn:example:unprotected': true },
         )
         .setAdditionalAuthenticatedData(crypto.randomFillSync(new Uint8Array(128 >> 3)))
-        .encrypt(pub)
-      await flattenedDecrypt(jwe, priv)
+        .encrypt(pub, { privateKey: statik.privateKey })
+      await flattenedDecrypt(jwe, priv, { publicKey: statik.publicKey })
     }),
     ...fixtures.algs.map(async (alg) => {
       let priv
@@ -267,17 +272,22 @@ async function smoke(t, ref, publicKeyUsages, privateKeyUsage, octAsKeyObject = 
         ;({ privateKey: priv, publicKey: pub } = await generateKeyPair(alg, fixtures.generate))
       }
 
+      let statik = {}
+      if (alg.startsWith('ECDH-1PU')) {
+        statik = await generateKeyPair(alg, fixtures.generate)
+      }
+
       const jwe = await new FlattenedEncrypt(crypto.randomFillSync(new Uint8Array(256 >> 3)))
         .setProtectedHeader({ 'urn:example:protected': true })
         .setUnprotectedHeader(
-          dir(alg) ? { enc: alg } : { enc: randomEnc(), 'urn:example:header': true },
+          dir(alg) ? { enc: alg } : { enc: randomEnc(alg), 'urn:example:header': true },
         )
         .setSharedUnprotectedHeader(
           dir(alg) ? { alg: 'dir' } : { alg, 'urn:example:unprotected': true },
         )
         .setAdditionalAuthenticatedData(crypto.randomFillSync(new Uint8Array(128 >> 3)))
-        .encrypt(pub)
-      await flattenedDecrypt(jwe, priv)
+        .encrypt(pub, { privateKey: statik.privateKey })
+      await flattenedDecrypt(jwe, priv, { publicKey: statik.publicKey })
     }),
   ])
   t.pass()

@@ -138,7 +138,10 @@ export class EncryptJWT extends ProduceJWT {
    * @param key Public Key or Secret to encrypt the JWT with.
    * @param options JWE Encryption options.
    */
-  async encrypt(key: KeyLike | Uint8Array, options?: EncryptOptions): Promise<string> {
+  async encrypt(
+    key: KeyLike | Uint8Array,
+    options?: EncryptOptions & { privateKey?: KeyLike },
+  ): Promise<string> {
     const enc = new CompactEncrypt(encoder.encode(JSON.stringify(this._payload)))
     if (this._replicateIssuerAsHeader) {
       this._protectedHeader = { ...this._protectedHeader, iss: this._payload.iss }

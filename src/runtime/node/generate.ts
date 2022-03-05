@@ -87,6 +87,7 @@ export async function generateKeyPair(alg: string, options?: GenerateKeyPairOpti
           )
       }
     }
+    case 'ECDH-1PU':
     case 'ECDH-ES':
     case 'ECDH-ES+A128KW':
     case 'ECDH-ES+A192KW':

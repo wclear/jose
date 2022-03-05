@@ -38,7 +38,7 @@ export interface CompactDecryptGetKey
 export async function compactDecrypt(
   jwe: string | Uint8Array,
   key: KeyLike | Uint8Array,
-  options?: DecryptOptions,
+  options?: DecryptOptions & { publicKey?: KeyLike },
 ): Promise<CompactDecryptResult>
 /**
  * @param jwe Compact JWE.
@@ -48,12 +48,12 @@ export async function compactDecrypt(
 export async function compactDecrypt(
   jwe: string | Uint8Array,
   getKey: CompactDecryptGetKey,
-  options?: DecryptOptions,
+  options?: DecryptOptions & { publicKey?: KeyLike },
 ): Promise<CompactDecryptResult & ResolvedKey>
 export async function compactDecrypt(
   jwe: string | Uint8Array,
   key: KeyLike | Uint8Array | CompactDecryptGetKey,
-  options?: DecryptOptions,
+  options?: DecryptOptions & { publicKey?: KeyLike },
 ) {
   if (jwe instanceof Uint8Array) {
     jwe = decoder.decode(jwe)
@@ -88,6 +88,10 @@ export async function compactDecrypt(
   )
 
   const result = { plaintext: decrypted.plaintext, protectedHeader: decrypted.protectedHeader! }
+
+  if (decrypted.contentEncryptionKey) {
+    ;(<CompactDecryptResult>result).contentEncryptionKey = decrypted.contentEncryptionKey
+  }
 
   if (typeof key === 'function') {
     return { ...result, key: decrypted.key }

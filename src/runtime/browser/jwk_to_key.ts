@@ -94,6 +94,7 @@ function subtleMapping(jwk: JWK): {
           algorithm = { name: 'ECDSA', namedCurve: 'P-521' }
           keyUsages = jwk.d ? ['sign'] : ['verify']
           break
+        case 'ECDH-1PU':
         case 'ECDH-ES':
         case 'ECDH-ES+A128KW':
         case 'ECDH-ES+A192KW':

@@ -42,9 +42,13 @@ class IndividualRecipient implements Recipient {
   private parent: GeneralEncrypt
   unprotectedHeader?: JWEHeaderParameters
   key: KeyLike | Uint8Array
-  options: CritOption
+  options: CritOption & { privateKey?: KeyLike }
 
-  constructor(enc: GeneralEncrypt, key: KeyLike | Uint8Array, options: CritOption) {
+  constructor(
+    enc: GeneralEncrypt,
+    key: KeyLike | Uint8Array,
+    options: CritOption & { privateKey?: KeyLike },
+  ) {
     this.parent = enc
     this.key = key
     this.options = options
@@ -115,8 +119,14 @@ export class GeneralEncrypt {
    * @param key Public Key or Secret to encrypt the Content Encryption Key for the recipient with.
    * @param options JWE Encryption options.
    */
-  addRecipient(key: KeyLike | Uint8Array, options?: CritOption): Recipient {
-    const recipient = new IndividualRecipient(this, key, { crit: options?.crit })
+  addRecipient(
+    key: KeyLike | Uint8Array,
+    options?: CritOption & { privateKey?: KeyLike },
+  ): Recipient {
+    const recipient = new IndividualRecipient(this, key, {
+      crit: options?.crit,
+      privateKey: options?.privateKey,
+    })
     this._recipients.push(recipient)
     return recipient
   }
@@ -218,8 +228,10 @@ export class GeneralEncrypt {
         throw new JWEInvalid('JWE "alg" (Algorithm) Header Parameter missing or invalid')
       }
 
-      if (alg === 'dir' || alg === 'ECDH-ES') {
-        throw new JWEInvalid('"dir" and "ECDH-ES" alg may only be used with a single recipient')
+      if (alg === 'dir' || alg === 'ECDH-ES' || alg === 'ECDH-1PU') {
+        throw new JWEInvalid(
+          '"dir", "ECDH-ES", and "ECDH-1PU" algorithms may only be used with a single recipient',
+        )
       }
 
       if (typeof joseHeader.enc !== 'string' || !joseHeader.enc) {
@@ -304,6 +316,7 @@ export class GeneralEncrypt {
         recipient.key,
         cek,
         { p2c },
+        recipient.options?.privateKey,
       )
       target.encrypted_key = base64url(encryptedKey!)
       if (recipient.unprotectedHeader || parameters)

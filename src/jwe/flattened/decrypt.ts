@@ -60,7 +60,7 @@ export interface FlattenedDecryptGetKey
 export function flattenedDecrypt(
   jwe: FlattenedJWE,
   key: KeyLike | Uint8Array,
-  options?: DecryptOptions,
+  options?: DecryptOptions & { publicKey?: KeyLike },
 ): Promise<FlattenedDecryptResult>
 /**
  * @param jwe Flattened JWE.
@@ -70,12 +70,12 @@ export function flattenedDecrypt(
 export function flattenedDecrypt(
   jwe: FlattenedJWE,
   getKey: FlattenedDecryptGetKey,
-  options?: DecryptOptions,
+  options?: DecryptOptions & { publicKey?: KeyLike },
 ): Promise<FlattenedDecryptResult & ResolvedKey>
 export async function flattenedDecrypt(
   jwe: FlattenedJWE,
   key: KeyLike | Uint8Array | FlattenedDecryptGetKey,
-  options?: DecryptOptions,
+  options?: DecryptOptions & { publicKey?: KeyLike },
 ) {
   if (!isObject(jwe)) {
     throw new JWEInvalid('Flattened JWE must be an object')
@@ -189,7 +189,7 @@ export async function flattenedDecrypt(
 
   let cek: KeyLike | Uint8Array
   try {
-    cek = await decryptKeyManagement(alg, key, encryptedKey, joseHeader)
+    cek = await decryptKeyManagement(alg, key, encryptedKey, joseHeader, options?.publicKey)
   } catch (err) {
     if (err instanceof TypeError) {
       throw err
@@ -238,6 +238,10 @@ export async function flattenedDecrypt(
 
   if (jwe.header !== undefined) {
     result.unprotectedHeader = jwe.header
+  }
+
+  if (alg.startsWith('ECDH-1PU')) {
+    result.contentEncryptionKey = <Uint8Array>cek
   }
 
   if (resolvedKey) {

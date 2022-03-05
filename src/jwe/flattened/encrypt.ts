@@ -172,7 +172,7 @@ export class FlattenedEncrypt {
    * @param key Public Key or Secret to encrypt the JWE with.
    * @param options JWE Encryption options.
    */
-  async encrypt(key: KeyLike | Uint8Array, options?: EncryptOptions) {
+  async encrypt(key: KeyLike | Uint8Array, options?: EncryptOptions & { privateKey?: KeyLike }) {
     if (!this._protectedHeader && !this._unprotectedHeader && !this._sharedUnprotectedHeader) {
       throw new JWEInvalid(
         'either setProtectedHeader, setUnprotectedHeader, or sharedUnprotectedHeader must be called before #encrypt()',
@@ -223,7 +223,7 @@ export class FlattenedEncrypt {
       if (this._cek) {
         throw new TypeError('setContentEncryptionKey cannot be called when using Direct Encryption')
       }
-    } else if (alg === 'ECDH-ES') {
+    } else if (alg === 'ECDH-ES' || alg === 'ECDH-1PU') {
       if (this._cek) {
         throw new TypeError(
           'setContentEncryptionKey cannot be called when using Direct Key Agreement',
@@ -240,6 +240,7 @@ export class FlattenedEncrypt {
         key,
         this._cek,
         this._keyManagementParameters,
+        options?.privateKey,
       ))
 
       if (parameters) {

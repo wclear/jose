@@ -122,6 +122,7 @@ const genericImport = async (
       algorithm = { name: 'ECDSA', namedCurve: 'P-521' }
       keyUsages = isPublic ? ['verify'] : ['sign']
       break
+    case 'ECDH-1PU':
     case 'ECDH-ES':
     case 'ECDH-ES+A128KW':
     case 'ECDH-ES+A192KW':
