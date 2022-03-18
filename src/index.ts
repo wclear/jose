@@ -57,6 +57,9 @@ export type { GenerateKeyPairResult, GenerateKeyPairOptions } from './key/genera
 export { generateSecret } from './key/generate_secret.js'
 export type { GenerateSecretOptions } from './key/generate_secret.js'
 
+export { validateTimeSpan } from './lib/validateTimeSpan.js'
+export type { validateTimeSpan } from './lib/validateTimeSpan.js'
+
 export * as base64url from './util/base64url.js'
 
 export type {
@@ -95,4 +98,5 @@ export type {
   CompactJWSHeaderParameters,
   JWTHeaderParameters,
   JSONWebKeySet,
+  validateTimeSpan,
 } from './types.d'
